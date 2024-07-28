@@ -34,7 +34,7 @@
 local STRICT_RUNTIME_TYPES = true -- assert on parameter and property type mismatch
 local SLEEP_OFFSET_SQ_LIMIT = (1/3840)^2 -- square of the offset sleep limit
 local SLEEP_VELOCITY_SQ_LIMIT = 1e-2^2 -- square of the velocity sleep limit
-local SLEEP_ROTATION_OFFSET = math.rad(0.01) -- rad
+local SLEEP_ROTATION_EPS = math.rad(0.01) -- rad
 local SLEEP_ROTATION_VELOCITY = math.rad(0.1) -- rad/s
 local EPS = 1e-5 -- epsilon for stability checks around pathological frequency/damping values
 local AXIS_MATRIX_EPS = 1e-6 -- epsilon for converting from axis-angle to matrix
@@ -48,6 +48,7 @@ local cos = math.cos
 local min = math.min
 local sqrt = math.sqrt
 local round = math.round
+local dot = Vector3.zero.Dot
 
 local function magnitudeSq(vec: {number})
 	local out = 0
@@ -63,6 +64,14 @@ local function distanceSq(vec0: {number}, vec1: {number})
 		out += (vec1[i0] - v0)^2
 	end
 	return out
+end
+
+local function areRotationsClose(c0: CFrame, c1: CFrame)
+	local rx = dot(c0.XVector, c1.XVector)
+	local ry = dot(c0.YVector, c1.YVector)
+	local rz = dot(c0.ZVector, c1.ZVector)
+	local trace = rx + ry + rz
+	return trace > 1 + 2*cos(SLEEP_ROTATION_EPS)
 end
 
 type TypeMetadata<T> = {
@@ -244,11 +253,6 @@ type RotationSpring = typeof(setmetatable({} :: {
 do
 	RotationSpring.__index = RotationSpring
 
-	local function angleBetween(c0: CFrame, c1: CFrame)
-		local _, angle = (c1:ToObjectSpace(c0)):ToAxisAngle()
-		return math.abs(angle)
-	end
-
 	local function matrixToAxis(m: CFrame)
 		local axis, angle = m:ToAxisAngle()
 		return axis*angle
@@ -288,7 +292,7 @@ do
 	end
 
 	function RotationSpring.canSleep(self: RotationSpring)
-		local sleepP = angleBetween(self.p, self.g) < SLEEP_ROTATION_OFFSET
+		local sleepP = areRotationsClose(self.p, self.g)
 		local sleepV = self.v.Magnitude < SLEEP_ROTATION_VELOCITY
 		return sleepP and sleepV
 	end
@@ -717,7 +721,7 @@ function spr.target(instance: Instance, dampingRatio: number, frequency: number,
 	if frequency ~= frequency or frequency < 0 then
 		error(("expected undamped frequency >= 0; got %.2f"):format(frequency), 2)
 	end
-	
+
 	local targetRecord = (if instance:IsA("Camera") then springStates_render else springStates_other) :: {[Instance]: {[string]: any}}
 
 	local state = targetRecord[instance]
