@@ -668,6 +668,9 @@ local PSEUDO_PROPERTIES: PropertyOverride = {
 			return inst:GetScale()
 		end,
 		set = function(inst: Model, value: number)
+			local FLOAT_MANTISSA_MIN = 1.402e-45
+			local FLOAT_MANTISSA_MAX = 2^24
+			value = math.clamp(value, FLOAT_MANTISSA_MIN, FLOAT_MANTISSA_MAX)
 			inst:ScaleTo(value)
 		end
 	}
