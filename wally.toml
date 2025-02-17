@@ -1,0 +1,11 @@
+[package]
+name = "kiyaku/spr"
+version = "2.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+license = "MIT"
+description = "Spr is a high-performance and user-friendly motion library for Roblox based on springs."
+authors = ["Fraktality"]
+
+[dependencies]
